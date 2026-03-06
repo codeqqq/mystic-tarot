@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>神秘塔罗</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:system-ui,-apple-system,sans-serif;background:linear-gradient(135deg,#1a0a2e,#16213e,#0f3460);min-height:100vh;color:#fff;padding:20px}
+        .container{max-width:900px;margin:0 auto;text-align:center}
+        h1{font-size:2.5rem;background:linear-gradient(45deg,#ffd700,#ffed4e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:20px 0}
+        .controls{margin:20px 0}
+        button{padding:12px 30px;margin:5px;border:none;border-radius:25px;cursor:pointer;font-size:1rem;transition:.3s}
+        .btn-primary{background:linear-gradient(45deg,#667eea,#764ba2);color:#fff}
+        .btn-secondary{background:transparent;color:#b8c5d6;border:2px solid #4a5568}
+        .spread-selector{display:flex;justify-content:center;gap:10px;margin:15px 0;flex-wrap:wrap}
+        .spread-option{padding:8px 20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;cursor:pointer}
+        .spread-option.active{background:rgba(102,126,234,.3);border-color:#667eea}
+        .cards-container{display:flex;flex-wrap:wrap;justify-content:center;gap:15px;margin:30px 0;min-height:250px}
+        .tarot-card{width:100px;height:170px;position:relative;cursor:pointer;transform-style:preserve-3d;transition:transform .6s}
+        .tarot-card:hover:not(.flipped){transform:translateY(-10px)}
+        .tarot-card.flipped{transform:rotateY(180deg)}
+        .card-face{position:absolute;width:100%;height:100%;backface-visibility:hidden;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.3)}
+        .card-back{background:linear-gradient(135deg,#1a1a2e,#16213e);border:2px solid #4a5568;display:flex;align-items:center;justify-content:center}
+        .card-back::after{content:'✦';font-size:2rem;color:rgba(102,126,234,.5)}
+        .card-front{background:linear-gradient(135deg,#f5f0e8,#e8e0d0);transform:rotateY(180deg);border:2px solid #d4af37;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;color:#1a1a2e}
+        .card-front.major{background:linear-gradient(135deg,#1a0a2e,#2d1b4e);color:#ffd700;border-color:#ffd700}
+        .card-rank{font-size:1rem;font-weight:700}
+        .card-suit{font-size:1.8rem;margin:3px 0}
+        .card-name{font-size:.65rem;text-align:center;line-height:1.2}
+        .interpretation{background:rgba(255,255,255,.05);border-radius:15px;padding:20px;margin-top:20px;display:none;text-align:left}
+        .interpretation.show{display:block}
+        .card-reading{background:rgba(0,0,0,.2);border-radius:10px;padding:15px;margin-bottom:10px;border-left:3px solid #667eea}
+        .card-reading h3{color:#ffd700;margin-bottom:8px;font-size:1rem}
+        .card-meaning{color:#d1d5db;line-height:1.6;font-size:.9rem;margin-bottom:8px}
+        .keywords{display:flex;flex-wrap:wrap;gap:5px}
+        .keyword{background:rgba(102,126,234,.2);padding:3px 10px;border-radius:12px;font-size:.75rem;color:#a5b4fc}
+        .hint{color:#b8c5d6;margin:15px 0}
+        @media(max-width:600px){.tarot-card{width:80px;height:140px}.card-suit{font-size:1.5rem}}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✦ 神秘塔罗 ✦</h1>
+        <div class="spread-selector">
+            <div class="spread-option active" data-spread="three">三张牌阵</div>
+            <div class="spread-option" data-spread="single">单张牌</div>
+        </div>
+        <div class="controls">
+            <button class="btn-primary" onclick="deal()">发牌</button>
+            <button class="btn-secondary" onclick="reset()">重置</button>
+        </div>
+        <div class="hint" id="hint">点击"发牌"开始你的塔罗之旅</div>
+        <div class="cards-container" id="cards"></div>
+        <div class="interpretation" id="result"></div>
+    </div>
+
+<script>
+const cards=[
+{id:0,name:"愚人",kw:["新的开始","冒险","纯真"],m:"愚人代表新的开始和无限潜能。鼓励你放下恐惧，拥抱未知。"},
+{id:1,name:"魔术师",kw:["创造力","意志力","显化"],m:"魔术师象征着你拥有实现目标所需的所有资源和能力。"},
+{id:2,name:"女祭司",kw:["直觉","潜意识","神秘"],m:"女祭司邀请你倾听内在的声音，相信你的直觉。"},
+{id:3,name:"皇后",kw:["丰饶","母性","创造力"],m:"皇后代表着丰盛、创造力和滋养。享受生活中的美好事物。"},
+{id:4,name:"皇帝",kw:["权威","结构","稳定"],m:"皇帝象征着秩序、结构和掌控。建立稳固的基础。"},
+{id:5,name:"教皇",kw:["传统","信仰","教导"],m:"教皇代表着传统和精神指导。寻求智慧长者的建议。"},
+{id:6,name:"恋人",kw:["爱情","选择","和谐"],m:"恋人象征着重要的关系和选择。需要在选项间做决定。"},
+{id:7,name:"战车",kw:["意志力","胜利","决心"],m:"战车代表通过坚定的意志克服困难。保持专注。"},
+{id:8,name:"力量",kw:["勇气","耐心","内在力量"],m:"力量不是强制，而是以柔克刚。真正的力量来自内心。"},
+{id:9,name:"隐者",kw:["内省","独处","寻找真理"],m:"隐者邀请你暂时退隐，进行自我反思。"},
+{id:10,name:"命运之轮",kw:["变化","周期","命运"],m:"命运之轮提醒这世界充满变化和循环。顺应变化。"},
+{id:11,name:"正义",kw:["公正","平衡","因果"],m:"正义要求你审视自己的行为。诚实面对真相。"},
+{id:12,name:"倒吊人",kw:["牺牲","新视角","等待"],m:"倒吊人建议你暂停行动，从不同角度看待情况。"},
+{id:13,name:"死神",kw:["结束","转变","新生"],m:"死神不代表肉体死亡，而是重大的转变和结束。"},
+{id:14,name:"节制",kw:["平衡","调和","耐心"],m:"节制教导你在对立面之间找到平衡。避免极端。"},
+{id:15,name:"恶魔",kw:["束缚","物质主义","诱惑"],m:"恶魔揭示你可能被自己的欲望所束缚。认识枷锁才能自由。"},
+{id:16,name:"塔",kw:["突变","觉醒","破坏"],m:"塔代表突然的变化和旧结构的崩塌。带来必要的觉醒。"},
+{id:17,name:"星星",kw:["希望","灵感","宁静"],m:"星星带来希望和灵性的指引。重新找到信心和方向。"},
+{id:18,name:"月亮",kw:["幻觉","恐惧","潜意识"],m:"月亮揭示隐藏的恐惧和不确定性。小心欺骗和幻觉。"},
+{id:19,name:"太阳",kw:["快乐","成功","活力"],m:"太阳是最积极的牌之一，代表成功、快乐和活力。"},
+{id:20,name:"审判",kw:["重生","觉醒","评价"],m:"审判召唤你回应内心的呼唤。这是重生和觉醒的时刻。"},
+{id:21,name:"世界",kw:["完成","成就","圆满"],m:"世界代表一个周期的完成和成就。达到了圆满的状态。"}
+];
+const spreads={single:{p:["当前状况"],c:1},three:{p:["过去","现在","未来"],c:3}};
+let cur='three',dealt=[],flipped=0;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function deal(){const c=document.getElementById('cards'),h=document.getElementById('hint'),r=document.getElementById('result');c.innerHTML='';r.className='interpretation';flipped=0;const s=spreads[cur],shuffled=shuffle([...cards]);dealt=shuffled.slice(0,s.c);h.textContent='点击卡牌翻开';dealt.forEach((card,i)=>{const el=document.createElement('div');el.className='tarot-card';el.innerHTML=`<div class="card-face card-back"></div><div class="card-face card-front ${card.id<22?'major':''}"><div class="card-rank">${card.id}</div><div class="card-suit">${card.id<22?'☀️':'✦'}</div><div class="card-name">${card.name}</div></div>`;el.onclick=()=>flip(el,card,i);c.appendChild(el)})}
+function flip(el,card,i){if(el.classList.contains('flipped'))return;el.classList.add('flipped');flipped++;if(flipped===dealt.length)setTimeout(show,300)}
+function show(){const r=document.getElementById('result'),s=spreads[cur];r.innerHTML='<h2 style="text-align:center;color:#ffd700;margin-bottom:15px">🔮 牌面解读</h2>';dealt.forEach((card,i)=>{const d=document.createElement('div');d.className='card-reading';d.innerHTML=`<h3>${card.name} (${s.p[i]})</h3><div class="card-meaning">${card.m}</div><div class="keywords">${card.kw.map(k=>`<span class="keyword">${k}</span>`).join('')}</div>`;r.appendChild(d)});r.className='interpretation show'}
+function reset(){document.getElementById('cards').innerHTML='';document.getElementById('result').className='interpretation';document.getElementById('hint').textContent='点击"发牌"开始你的塔罗之旅';dealt=[];flipped=0}
+document.querySelectorAll('.spread-option').forEach(o=>o.onclick=function(){document.querySelectorAll('.spread-option').forEach(x=>x.classList.remove('active'));this.classList.add('active');cur=this.dataset.spread;reset()});
+</script>
+</body>
+</html>
